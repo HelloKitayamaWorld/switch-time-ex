@@ -1,11 +1,12 @@
-# SwitchTime
+# SwitchTimeEx
 Change NetworkSystemClock
 
 ## Credit
-- [@thedax](https://github.com/thedax) for NX-ntpc, from which this project is forked.
+- [@thedax](https://github.com/thedax)
+- [@3096](https://github.com/3096)
 
 ## Functionality
-- Change time by day/hour
+- Change time by year/month/day/hour
 - Contact a time server at http://ntp.org to set the time back to normal
 
 ## Building

@@ -88,10 +88,13 @@ int consoleExitWithMsg(char* msg) {
     printf("%s\n\nPress + to quit...", msg);
 
     while (appletMainLoop()) {
-        hidScanInput();
-        u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO);
+        padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+        PadState pad;
+        padInitializeDefault(&pad);
+        padUpdate(&pad);
+        u64 kDown = padGetButtonsDown(&pad);
 
-        if (kDown & KEY_PLUS) {
+        if (kDown & HidNpadButton_Plus) {
             consoleExit(NULL);
             return 0;  // return to hbmenu
         }
@@ -105,7 +108,7 @@ int consoleExitWithMsg(char* msg) {
 bool toggleHBMenuPath(char* curPath) {
     const char* HB_MENU_NRO_PATH = "sdmc:/hbmenu.nro";
     const char* HB_MENU_BAK_PATH = "sdmc:/hbmenu.nro.bak";
-    const char* DEFAULT_RESTORE_PATH = "sdmc:/switch/switch-time.nro";
+    const char* DEFAULT_RESTORE_PATH = "sdmc:/switch/switch-time-ex.nro";
 
     printf("\n\n");
 
@@ -155,7 +158,11 @@ bool toggleHBMenuPath(char* curPath) {
 
 int main(int argc, char* argv[]) {
     consoleInit(NULL);
-    printf("SwitchTime v0.1.1\n\n");
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+    PadState pad;
+    padInitializeDefault(&pad);
+
+    printf("SwitchTimeEx v0.1.0\n\n");
 
     if (!setsysInternetTimeSyncIsOn()) {
         // printf("Trying setsysSetUserSystemClockAutomaticCorrectionEnabled...\n");
@@ -170,20 +177,21 @@ int main(int argc, char* argv[]) {
     while (appletMainLoop()) {
         printf(
             "\n\n\n"
-            "Press: UP/DOWN to change hour | LEFT/RIGHT to change day\n"
-            "       A to confirm time      | Y to reset to current time (ntp.org time server)\n"
-            "                              | + to quit\n\n\n");
+            "Press: ZL/ZR to to change year   | L/R to to change month\n"
+            "       LEFT/RIGHT to change day  | UP/DOWN to change hour\n"
+            "       A to confirm time         | Y to reset to current time (ntp.org time server)\n"
+            "       - to quick launch toggled | + to quit\n\n\n");
 
-        int dayChange = 0, hourChange = 0;
+        int yearChange = 0, monthChange = 0, dayChange = 0, hourChange = 0;
         while (appletMainLoop()) {
-            hidScanInput();
-            u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO);
+            padUpdate(&pad);
+            u64 kDown = padGetButtonsDown(&pad);
 
-            if (kDown & KEY_PLUS) {
+            if (kDown & HidNpadButton_Plus) {
                 consoleExit(NULL);
                 return 0;  // return to hbmenu
             }
-            if (kDown & KEY_L) {
+            if (kDown & HidNpadButton_Minus) {
                 if (!toggleHBMenuPath(argv[0])) {
                     return 0;
                 }
@@ -197,17 +205,19 @@ int main(int argc, char* argv[]) {
             }
 
             struct tm* p_tm_timeToSet = localtime(&currentTime);
+            p_tm_timeToSet->tm_year += yearChange;
+            p_tm_timeToSet->tm_mon += monthChange;
             p_tm_timeToSet->tm_mday += dayChange;
             p_tm_timeToSet->tm_hour += hourChange;
             time_t timeToSet = mktime(p_tm_timeToSet);
 
-            if (kDown & KEY_A) {
+            if (kDown & HidNpadButton_A) {
                 printf("\n\n\n");
                 setNetworkSystemClock(timeToSet);
                 break;
             }
 
-            if (kDown & KEY_Y) {
+            if (kDown & HidNpadButton_Y) {
                 printf("\n\n\n");
                 rs = ntpGetTime(&timeToSet);
                 if (R_SUCCEEDED(rs)) {
@@ -216,15 +226,24 @@ int main(int argc, char* argv[]) {
                 break;
             }
 
-            if (kDown & KEY_LEFT) {
+            if (kDown & HidNpadButton_Left) {
                 dayChange--;
-            } else if (kDown & KEY_RIGHT) {
+            } else if (kDown & HidNpadButton_Right) {
                 dayChange++;
-            } else if (kDown & KEY_DOWN) {
+            } else if (kDown & HidNpadButton_Down) {
                 hourChange--;
-            } else if (kDown & KEY_UP) {
+            } else if (kDown & HidNpadButton_Up) {
                 hourChange++;
+            } else if (kDown & HidNpadButton_L) {
+                monthChange--;
+            } else if (kDown & HidNpadButton_R) {
+                monthChange++;
+            } else if (kDown & HidNpadButton_ZL) {
+                yearChange--;
+            } else if (kDown & HidNpadButton_ZR) {
+                yearChange++;
             }
+            
 
             char timeToSetStr[25];
             strftime(timeToSetStr, sizeof timeToSetStr, "%c", p_tm_timeToSet);
